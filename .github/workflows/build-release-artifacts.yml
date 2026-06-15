@@ -75,25 +75,24 @@ jobs:
           Compress-Archive -Path "$root\CLAP\BORATO EQ.clap" `
                            -DestinationPath "$dist\$base-CLAP.zip"
 
-          @"
-          # BORATO EQ Windows install (x64)
-
-          The artifacts are unsigned development builds. The Standalone is built
-          with ASIO support (JUCE 8 bundled ASIO header).
-
-          ## Manual VST3
-
-          Unzip ``$base-VST3.zip`` and copy ``BORATO EQ.vst3`` to:
-
-          ``C:\Program Files\Common Files\VST3\``
-
-          ## Manual CLAP
-
-          Unzip ``$base-CLAP.zip`` and copy ``BORATO EQ.clap`` to:
-
-          ``C:\Program Files\Common Files\CLAP\``
-
-"@ | Out-File -Encoding utf8 "$dist\INSTALL-Windows-x64.md"
+          $lines = @(
+            "# BORATO EQ Windows install (x64)"
+            ""
+            "The artifacts are unsigned development builds."
+            ""
+            "## Manual VST3"
+            ""
+            "Unzip ``$base-VST3.zip`` and copy ``BORATO EQ.vst3`` to:"
+            ""
+            "``C:\Program Files\Common Files\VST3\``"
+            ""
+            "## Manual CLAP"
+            ""
+            "Unzip ``$base-CLAP.zip`` and copy ``BORATO EQ.clap`` to:"
+            ""
+            "``C:\Program Files\Common Files\CLAP\``"
+          )
+          $lines | Out-File -Encoding utf8 "$dist\INSTALL-Windows-x64.md"
 
           Get-ChildItem $dist
 
