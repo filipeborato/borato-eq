@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - master
       - release
       - "release/**"
       - "ci/**"
@@ -12,6 +13,7 @@ on:
   pull_request:
     branches:
       - main
+      - master
   workflow_dispatch:
 
 permissions:
