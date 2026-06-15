@@ -247,7 +247,12 @@ void HeaderBarComponent::showSettingsMenu()
             else if (result >= 20 && result <= 23)
             {
                 float scales[] = {1.0f, 1.25f, 1.5f, 2.0f};
-                settings.setGuiScale(scales[result - 20]);
+                float scale = scales[result - 20];
+                settings.setGuiScale(scale);
+                if (auto* editor = processorRef.getActiveEditor())
+                {
+                    editor->setSize((int)(1024.0f * scale), (int)(520.0f * scale));
+                }
             }
             else if (result == 30)
             {

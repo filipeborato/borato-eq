@@ -5,7 +5,7 @@ PresetManager::PresetManager()
 {
     std::map<juce::String, float> def;
     def["lpf"] = 20000.0f; def["hpf"] = 20.0f;
-    def["inputGain"] = 0.0f; def["outputGain"] = 0.0f; def["link"] = 0.0f;
+    def["link"] = 0.0f;
     def["tube"] = 0.0f; def["iron"] = 0.0f; def["colour"] = 50.0f; def["voicing"] = 50.0f; def["power"] = 1.0f;
 
     def["band1Freq"] = 100.0f; def["band1Gain"] = 0.0f; def["band1Q"] = 2.0f; def["band1Shape"] = 0.0f; def["band1On"] = 1.0f;

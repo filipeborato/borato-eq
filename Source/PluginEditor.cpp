@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "Settings.h"
 
 namespace
 {
@@ -28,7 +29,9 @@ BoratoEqAudioProcessorEditor::BoratoEqAudioProcessorEditor(BoratoEqAudioProcesso
     if (auto* boundsConstrainer = getConstrainer())
         boundsConstrainer->setFixedAspectRatio((double) designW / (double) designH);
     setResizeLimits(1024, 520, 4096, 2080);
-    setSize(1366, 694);
+    
+    float scale = Settings::getInstance().getGuiScale();
+    setSize((int)(1024.0f * scale), (int)(520.0f * scale));
 }
 
 BoratoEqAudioProcessorEditor::~BoratoEqAudioProcessorEditor()
