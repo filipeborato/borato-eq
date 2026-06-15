@@ -93,7 +93,7 @@ jobs:
 
           ``C:\Program Files\Common Files\CLAP\``
 
-                    "@ | Out-File -Encoding utf8 "$dist\INSTALL-Windows-x64.md"
+"@ | Out-File -Encoding utf8 "$dist\INSTALL-Windows-x64.md"
 
           Get-ChildItem $dist
 
@@ -225,9 +225,9 @@ jobs:
           auval -a | grep -i Borato || true
 
           # Mandatory validation. Codes come from juce_add_plugin():
-          # IS_SYNTH -> aumu, PLUGIN_CODE = BqEq, MANUFACTURER_CODE = Bora.
+          # IS_SYNTH -> aufx, PLUGIN_CODE = BqEq, MANUFACTURER_CODE = Bora.
           # With `set -e`, a non-zero auval exit fails the whole workflow.
-          auval -v aumu BqEq Bora
+          auval -v aufx BqEq Bora
 
       - name: Package artifacts
         shell: bash
@@ -260,7 +260,7 @@ jobs:
           # BORATO EQ macOS install (@ARCH@)
 
           The Audio Unit in this bundle is ad-hoc signed and was validated in CI
-          with `auval -v aumu BqEq Bora`. The VST3/CLAP artifacts are
+          with `auval -v aufx BqEq Bora`. The VST3/CLAP artifacts are
           unsigned development builds.
 
           ## VST3
@@ -282,7 +282,7 @@ jobs:
           You can re-validate locally with:
 
           ```bash
-          auval -v aumu BqEq Bora
+          auval -v aufx BqEq Bora
           ```
 
           ## CLAP
