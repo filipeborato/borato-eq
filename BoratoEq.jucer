@@ -6,7 +6,7 @@
               bundleIdentifier="com.boratocompany.boratoeq" pluginName="BORATO EQ"
               pluginDesc="Five-band parallel tube EQ for mixing and mastering."
               pluginManufacturer="Borato Company" pluginManufacturerCode="Bora"
-              pluginCode="BqEq" pluginChannelConfigs="{2,2}" pluginFormats="buildAU,buildVST3">
+              pluginCode="BqEq" pluginChannelConfigs="{2,2}" pluginFormats="buildAU,buildStandalone,buildVST3">
   <MAINGROUP id="root" name="BoratoEq">
     <GROUP id="src" name="Source">
       <FILE id="procCpp" name="PluginProcessor.cpp" compile="1" resource="0"
