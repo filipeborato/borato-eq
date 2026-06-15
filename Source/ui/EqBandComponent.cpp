@@ -81,14 +81,17 @@ EqBandComponent::EqBandComponent(BoratoEqLookAndFeel& lnf,
         addAndMakeVisible(b);
     }
 
-    for (size_t i = 0; i < shapeButtons.size(); ++i)
+    if (cfg.showShape)
     {
-        auto& b = shapeButtons[i];
-        b.setShape(BoratoEq::shapeForIndex(cfg, (int) i));
-        b.setLookAndFeel(&lookAndFeelRef);
-        b.setClickingTogglesState(false);
-        b.onClick = [this, i] { setChoiceParam(cfg.shapeId, (int) i); };
-        addAndMakeVisible(b);
+        for (size_t i = 0; i < shapeButtons.size(); ++i)
+        {
+            auto& b = shapeButtons[i];
+            b.setShape(BoratoEq::shapeForIndex(cfg, (int) i));
+            b.setLookAndFeel(&lookAndFeelRef);
+            b.setClickingTogglesState(false);
+            b.onClick = [this, i] { setChoiceParam(cfg.shapeId, (int) i); };
+            addAndMakeVisible(b);
+        }
     }
 
     startTimerHz(20);
@@ -168,9 +171,12 @@ void EqBandComponent::timerCallback()
     for (size_t i = 0; i < qButtons.size(); ++i)
         qButtons[i].setToggleState((int) i == qIndex, juce::dontSendNotification);
 
-    const int shapeIndex = getChoiceParam(cfg.shapeId);
-    for (size_t i = 0; i < shapeButtons.size(); ++i)
-        shapeButtons[i].setToggleState((int) i == shapeIndex, juce::dontSendNotification);
+    if (cfg.showShape)
+    {
+        const int shapeIndex = getChoiceParam(cfg.shapeId);
+        for (size_t i = 0; i < shapeButtons.size(); ++i)
+            shapeButtons[i].setToggleState((int) i == shapeIndex, juce::dontSendNotification);
+    }
 
     repaint();
 }
@@ -194,8 +200,11 @@ void EqBandComponent::resized()
     for (size_t i = 0; i < qButtons.size(); ++i)
         qButtons[i].setBounds(R(qX + (float) i * 54.0f, 787.0f, 42.0f, 40.0f));
 
-    shapeButtons[0].setBounds(R(26.0f, 863.0f, 112.0f, 42.0f));
-    shapeButtons[1].setBounds(R(155.0f, 863.0f, 112.0f, 42.0f));
+    if (cfg.showShape)
+    {
+        shapeButtons[0].setBounds(R(26.0f, 863.0f, 112.0f, 42.0f));
+        shapeButtons[1].setBounds(R(155.0f, 863.0f, 112.0f, 42.0f));
+    }
 }
 
 void EqBandComponent::paint(juce::Graphics& g)

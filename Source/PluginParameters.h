@@ -51,19 +51,23 @@ namespace BoratoEq
         FilterType shapeA;
         FilterType shapeB;
         int        defaultShape; // 0 -> A, 1 -> B
+
+        // Whether this band exposes shape buttons. Pure mid bands stay a fixed
+        // bell (shapeA) and show no shape buttons.
+        bool showShape;
     };
 
     inline constexpr std::array<BandConfig, numBands> bands { {
         { "band1Freq", "band1Gain", "band1Q", "band1Shape", "band1On", "100Hz",
-          20.0f,   500.0f,   100.0f,   FilterType::lowShelf,  FilterType::bell,      0 },
+          20.0f,   500.0f,   100.0f,   FilterType::lowShelf,  FilterType::bell,      0, true  },
         { "band2Freq", "band2Gain", "band2Q", "band2Shape", "band2On", "300Hz",
-          80.0f,   1200.0f,  300.0f,   FilterType::lowShelf,  FilterType::bell,      1 },
+          80.0f,   1200.0f,  300.0f,   FilterType::lowShelf,  FilterType::bell,      1, true  },
         { "band3Freq", "band3Gain", "band3Q", "band3Shape", "band3On", "1kHz",
-          200.0f,  5000.0f,  1000.0f,  FilterType::bell,      FilterType::notch,     0 },
+          200.0f,  5000.0f,  1000.0f,  FilterType::bell,      FilterType::bell,      0, false },
         { "band4Freq", "band4Gain", "band4Q", "band4Shape", "band4On", "4kHz",
-          1000.0f, 12000.0f, 4000.0f,  FilterType::bell,      FilterType::highShelf, 0 },
+          1000.0f, 12000.0f, 4000.0f,  FilterType::bell,      FilterType::highShelf, 0, true  },
         { "band5Freq", "band5Gain", "band5Q", "band5Shape", "band5On", "10kHz",
-          2000.0f, 20000.0f, 10000.0f, FilterType::bell,      FilterType::highShelf, 1 },
+          2000.0f, 20000.0f, 10000.0f, FilterType::bell,      FilterType::highShelf, 1, true  },
     } };
 
     inline FilterType shapeForIndex(const BandConfig& cfg, int index)

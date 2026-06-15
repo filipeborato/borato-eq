@@ -47,10 +47,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
             juce::ParameterID { b.qId, 1 }, juce::String(b.label) + " Q",
             qChoices, defaultQIndex));
 
-        juce::StringArray shapeChoices { shapeName(b.shapeA), shapeName(b.shapeB) };
-        params.push_back(std::make_unique<juce::AudioParameterChoice>(
-            juce::ParameterID { b.shapeId, 1 }, juce::String(b.label) + " Shape",
-            shapeChoices, b.defaultShape));
+        if (b.showShape)
+        {
+            juce::StringArray shapeChoices { shapeName(b.shapeA), shapeName(b.shapeB) };
+            params.push_back(std::make_unique<juce::AudioParameterChoice>(
+                juce::ParameterID { b.shapeId, 1 }, juce::String(b.label) + " Shape",
+                shapeChoices, b.defaultShape));
+        }
 
         params.push_back(std::make_unique<juce::AudioParameterBool>(
             juce::ParameterID { b.onId, 1 }, juce::String(b.label) + " On", true));
@@ -96,7 +99,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
 
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID { ParamIDs::voicing, 1 }, "Voicing",
-        juce::NormalisableRange<float> { 0.0f, 100.0f, 0.1f }, 0.0f,
+        juce::NormalisableRange<float> { 0.0f, 100.0f, 0.1f }, 50.0f,
         juce::AudioParameterFloatAttributes().withLabel("%")));
 
     params.push_back(std::make_unique<juce::AudioParameterBool>(

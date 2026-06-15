@@ -6,11 +6,12 @@
 #include "dsp/ParallelEq.h"
 #include "dsp/ColourStage.h"
 
-class BoratoEqAudioProcessor final : public juce::AudioProcessor
+class BoratoEqAudioProcessor final : public juce::AudioProcessor,
+                                     private juce::AudioProcessorValueTreeState::Listener
 {
 public:
     BoratoEqAudioProcessor();
-    ~BoratoEqAudioProcessor() override = default;
+    ~BoratoEqAudioProcessor() override;
 
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}
@@ -39,7 +40,13 @@ public:
     juce::AudioProcessorValueTreeState apvts;
 
 private:
+    void parameterChanged(const juce::String& parameterID, float newValue) override;
     void pullParametersIntoDsp();
+
+    // Set from the message thread whenever a parameter changes; the audio
+    // thread then recomputes filter coefficients only on the next block,
+    // instead of re-deriving (and reallocating) them on every block.
+    std::atomic<bool> paramsDirty { true };
 
     std::array<std::atomic<float>*, BoratoEq::numBands> freqParam {};
     std::array<std::atomic<float>*, BoratoEq::numBands> gainParam {};

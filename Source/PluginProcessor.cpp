@@ -13,7 +13,7 @@ BoratoEqAudioProcessor::BoratoEqAudioProcessor()
         freqParam[(size_t) b]  = apvts.getRawParameterValue(cfg.freqId);
         gainParam[(size_t) b]  = apvts.getRawParameterValue(cfg.gainId);
         qParam[(size_t) b]     = apvts.getRawParameterValue(cfg.qId);
-        shapeParam[(size_t) b] = apvts.getRawParameterValue(cfg.shapeId);
+        shapeParam[(size_t) b] = cfg.showShape ? apvts.getRawParameterValue(cfg.shapeId) : nullptr;
         onParam[(size_t) b]    = apvts.getRawParameterValue(cfg.onId);
     }
 
@@ -27,6 +27,24 @@ BoratoEqAudioProcessor::BoratoEqAudioProcessor()
     colourParam  = apvts.getRawParameterValue(ParamIDs::colour);
     voicingParam = apvts.getRawParameterValue(ParamIDs::voicing);
     powerParam   = apvts.getRawParameterValue(ParamIDs::power);
+
+    // Listen to every parameter so coefficient recomputation is triggered from
+    // the message thread, not re-run on every audio block.
+    for (auto* p : getParameters())
+        if (auto* withId = dynamic_cast<juce::AudioProcessorParameterWithID*>(p))
+            apvts.addParameterListener(withId->paramID, this);
+}
+
+BoratoEqAudioProcessor::~BoratoEqAudioProcessor()
+{
+    for (auto* p : getParameters())
+        if (auto* withId = dynamic_cast<juce::AudioProcessorParameterWithID*>(p))
+            apvts.removeParameterListener(withId->paramID, this);
+}
+
+void BoratoEqAudioProcessor::parameterChanged(const juce::String&, float)
+{
+    paramsDirty.store(true, std::memory_order_relaxed);
 }
 
 void BoratoEqAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
@@ -34,7 +52,8 @@ void BoratoEqAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBloc
     const int channels = getTotalNumOutputChannels();
 
     eq.prepare(sampleRate, samplesPerBlock, channels);
-    colour.prepare(sampleRate, channels);
+    colour.prepare(sampleRate, samplesPerBlock, channels);
+    setLatencySamples(colour.getLatencySamples());
 
     dryBuffer.setSize(channels, samplesPerBlock, false, false, true);
 
@@ -45,6 +64,7 @@ void BoratoEqAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBloc
     outputSmooth.setCurrentAndTargetValue(juce::Decibels::decibelsToGain(outputParam->load()));
     powerSmooth.setCurrentAndTargetValue(powerParam->load() > 0.5f ? 1.0f : 0.0f);
 
+    paramsDirty.store(true, std::memory_order_relaxed);
     pullParametersIntoDsp();
 }
 
@@ -55,7 +75,8 @@ void BoratoEqAudioProcessor::pullParametersIntoDsp()
         const auto& cfg = BoratoEq::bands[(size_t) b];
         const int qIndex = juce::jlimit(0, (int) BoratoEq::qValues.size() - 1,
                                         (int) qParam[(size_t) b]->load());
-        const int shapeIndex = (int) shapeParam[(size_t) b]->load();
+        const int shapeIndex = shapeParam[(size_t) b] != nullptr
+                                   ? (int) shapeParam[(size_t) b]->load() : 0;
 
         ParallelEq::BandSettings s;
         s.freq   = freqParam[(size_t) b]->load();
@@ -86,7 +107,8 @@ void BoratoEqAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     for (int ch = inputChannels; ch < outputChannels; ++ch)
         buffer.clear(ch, 0, numSamples);
 
-    pullParametersIntoDsp();
+    if (paramsDirty.exchange(false, std::memory_order_relaxed))
+        pullParametersIntoDsp();
 
     // Keep a clean copy of the input for the POWER bypass crossfade.
     if (dryBuffer.getNumChannels() < outputChannels || dryBuffer.getNumSamples() < numSamples)
