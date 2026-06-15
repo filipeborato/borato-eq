@@ -3,65 +3,69 @@
 
 PresetManager::PresetManager()
 {
-    // Initialize Factory Presets
-    PresetData defaultPreset;
-    defaultPreset.name = "Default";
-    // We can leave values empty, or define them explicitly.
-    // If empty, the caller might need to know how to "reset to default".
-    // Actually, let's explicitly define a few to override anything.
-    factoryPresets.push_back(defaultPreset);
+    std::map<juce::String, float> def;
+    def["lpf"] = 20000.0f; def["hpf"] = 20.0f;
+    def["inputGain"] = 0.0f; def["outputGain"] = 0.0f; def["link"] = 0.0f;
+    def["tube"] = 0.0f; def["iron"] = 0.0f; def["colour"] = 50.0f; def["voicing"] = 50.0f; def["power"] = 1.0f;
 
-    PresetData vocalAir;
-    vocalAir.name = "Vocal Air";
-    vocalAir.values["band4Gain"] = 2.0f;
-    vocalAir.values["band5Gain"] = 4.0f;
-    vocalAir.values["tube"] = 1.0f;
-    vocalAir.values["colour"] = 30.0f;
-    factoryPresets.push_back(vocalAir);
+    def["band1Freq"] = 100.0f; def["band1Gain"] = 0.0f; def["band1Q"] = 2.0f; def["band1Shape"] = 0.0f; def["band1On"] = 1.0f;
+    def["band2Freq"] = 300.0f; def["band2Gain"] = 0.0f; def["band2Q"] = 2.0f; def["band2Shape"] = 0.0f; def["band2On"] = 1.0f;
+    def["band3Freq"] = 1000.0f; def["band3Gain"] = 0.0f; def["band3Q"] = 2.0f; def["band3On"] = 1.0f;
+    def["band4Freq"] = 4000.0f; def["band4Gain"] = 0.0f; def["band4Q"] = 2.0f; def["band4Shape"] = 0.0f; def["band4On"] = 1.0f;
+    def["band5Freq"] = 10000.0f; def["band5Gain"] = 0.0f; def["band5Q"] = 2.0f; def["band5Shape"] = 1.0f; def["band5On"] = 1.0f;
 
-    PresetData busGlue;
-    busGlue.name = "Bus Glue";
-    busGlue.values["band1Gain"] = 1.0f;
-    busGlue.values["band3Gain"] = -1.0f;
-    busGlue.values["tube"] = 1.0f;
-    busGlue.values["iron"] = 1.0f;
-    busGlue.values["colour"] = 40.0f;
-    busGlue.values["voicing"] = 40.0f;
-    factoryPresets.push_back(busGlue);
+    auto makePreset = [&](const juce::String& name) {
+        PresetData pd; pd.name = name; pd.values = def; return pd;
+    };
 
-    PresetData lowEndWeight;
-    lowEndWeight.name = "Low-End Weight";
-    lowEndWeight.values["band1Gain"] = 4.0f;
-    lowEndWeight.values["band2Gain"] = 2.0f;
-    lowEndWeight.values["iron"] = 1.0f;
-    lowEndWeight.values["voicing"] = 10.0f;
-    factoryPresets.push_back(lowEndWeight);
+    auto p = makePreset("Default");
+    factoryPresets.push_back(p);
 
-    PresetData vintageDark;
-    vintageDark.name = "Vintage Dark";
-    vintageDark.values["band5Gain"] = -3.0f;
-    vintageDark.values["lpf"] = 12000.0f;
-    vintageDark.values["tube"] = 1.0f;
-    vintageDark.values["iron"] = 1.0f;
-    vintageDark.values["voicing"] = 0.0f;
-    factoryPresets.push_back(vintageDark);
+    p = makePreset("Vocal Air");
+    p.values["band4Gain"] = 2.0f;
+    p.values["band5Gain"] = 4.0f;
+    p.values["tube"] = 1.0f;
+    p.values["colour"] = 30.0f;
+    factoryPresets.push_back(p);
 
-    PresetData modernOpen;
-    modernOpen.name = "Modern Open";
-    modernOpen.values["band4Gain"] = 2.0f;
-    modernOpen.values["band5Gain"] = 3.0f;
-    modernOpen.values["voicing"] = 100.0f;
-    modernOpen.values["tube"] = 1.0f;
-    factoryPresets.push_back(modernOpen);
+    p = makePreset("Bus Glue");
+    p.values["band1Gain"] = 1.0f;
+    p.values["band3Gain"] = -1.0f;
+    p.values["tube"] = 1.0f;
+    p.values["iron"] = 1.0f;
+    p.values["colour"] = 40.0f;
+    p.values["voicing"] = 40.0f;
+    factoryPresets.push_back(p);
 
-    PresetData masterPolish;
-    masterPolish.name = "Master Polish";
-    masterPolish.values["band1Gain"] = 1.0f;
-    masterPolish.values["band5Gain"] = 1.5f;
-    masterPolish.values["tube"] = 1.0f;
-    masterPolish.values["iron"] = 1.0f;
-    masterPolish.values["colour"] = 20.0f;
-    factoryPresets.push_back(masterPolish);
+    p = makePreset("Low-End Weight");
+    p.values["band1Gain"] = 4.0f;
+    p.values["band2Gain"] = 2.0f;
+    p.values["iron"] = 1.0f;
+    p.values["voicing"] = 10.0f;
+    factoryPresets.push_back(p);
+
+    p = makePreset("Vintage Dark");
+    p.values["band5Gain"] = -3.0f;
+    p.values["lpf"] = 12000.0f;
+    p.values["tube"] = 1.0f;
+    p.values["iron"] = 1.0f;
+    p.values["voicing"] = 0.0f;
+    factoryPresets.push_back(p);
+
+    p = makePreset("Modern Open");
+    p.values["band4Gain"] = 2.0f;
+    p.values["band5Gain"] = 3.0f;
+    p.values["voicing"] = 100.0f;
+    p.values["tube"] = 1.0f;
+    factoryPresets.push_back(p);
+
+    p = makePreset("Master Polish");
+    p.values["band1Gain"] = 1.0f;
+    p.values["band5Gain"] = 1.5f;
+    p.values["tube"] = 1.0f;
+    p.values["iron"] = 1.0f;
+    p.values["colour"] = 20.0f;
+    factoryPresets.push_back(p);
 
     scanUserPresets();
 }
