@@ -1,0 +1,505 @@
+name: Build Release Artifacts
+
+on:
+  push:
+    branches:
+      - main
+      - release
+      - "release/**"
+      - "ci/**"
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# The product version lives in exactly one place: the `project(... VERSION ...)`
+# line in CMakeLists.txt. Each job reads it at runtime into BORATOEQ_VERSION
+# (via GITHUB_ENV), so bumping the release is a one-line change in CMakeLists.txt
+# and every artifact name / release asset follows automatically.
+
+jobs:
+  build-windows:
+    name: Windows x64 Release
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version from CMakeLists.txt
+        shell: bash
+        run: |
+          set -euo pipefail
+          ver=$(sed -nE 's/^[[:space:]]*project\(BoratoEq[[:space:]]+VERSION[[:space:]]+([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' CMakeLists.txt)
+          test -n "$ver"
+          echo "Resolved BORATO EQ version: $ver"
+          echo "BORATOEQ_VERSION=$ver" >> "$GITHUB_ENV"
+
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -G "Visual Studio 17 2022" -A x64
+          -DBORATOEQ_FETCH_JUCE=ON
+          -DBORATOEQ_BUILD_CLAP=ON
+          -DBORATOEQ_COPY_PLUGIN_AFTER_BUILD=OFF
+
+      - name: Build Release
+        run: >
+          cmake --build build --config Release
+          --target BoratoEq_VST3 BoratoEq_CLAP
+
+      - name: Package artifacts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $root = "build\BoratoEq_artefacts\Release"
+          $dist = "dist"
+          New-Item -ItemType Directory -Force $dist | Out-Null
+
+          $base = "BoratoEq-v$env:BORATOEQ_VERSION-Windows-x64"
+
+          # VST3 is a bundle folder; keep the parent so the zip extracts as
+          # "BORATO EQ.vst3/...".
+          Compress-Archive -Path "$root\VST3\BORATO EQ.vst3" `
+                           -DestinationPath "$dist\$base-VST3.zip"
+          Compress-Archive -Path "$root\CLAP\BORATO EQ.clap" `
+                           -DestinationPath "$dist\$base-CLAP.zip"
+
+          @"
+          # BORATO EQ Windows install (x64)
+
+          The artifacts are unsigned development builds. The Standalone is built
+          with ASIO support (JUCE 8 bundled ASIO header).
+
+          ## Manual VST3
+
+          Unzip ``$base-VST3.zip`` and copy ``BORATO EQ.vst3`` to:
+
+          ``C:\Program Files\Common Files\VST3\``
+
+          ## Manual CLAP
+
+          Unzip ``$base-CLAP.zip`` and copy ``BORATO EQ.clap`` to:
+
+          ``C:\Program Files\Common Files\CLAP\``
+
+                    "@ | Out-File -Encoding utf8 "$dist\INSTALL-Windows-x64.md"
+
+          Get-ChildItem $dist
+
+      - name: Upload VST3
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoratoEq-v${{ env.BORATOEQ_VERSION }}-Windows-x64-VST3
+          path: dist/BoratoEq-v${{ env.BORATOEQ_VERSION }}-Windows-x64-VST3.zip
+          if-no-files-found: error
+
+      - name: Upload CLAP
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoratoEq-v${{ env.BORATOEQ_VERSION }}-Windows-x64-CLAP
+          path: dist/BoratoEq-v${{ env.BORATOEQ_VERSION }}-Windows-x64-CLAP.zip
+          if-no-files-found: error
+
+      - name: Upload install notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoratoEq-v${{ env.BORATOEQ_VERSION }}-Windows-x64-install-notes
+          path: dist/INSTALL-Windows-x64.md
+          if-no-files-found: error
+
+      - name: Upload release bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoratoEq-v${{ env.BORATOEQ_VERSION }}-Windows-x64-release-assets
+          path: dist/*
+          if-no-files-found: error
+
+      - name: Attach assets to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            dist/BoratoEq-v${{ env.BORATOEQ_VERSION }}-Windows-x64-VST3.zip
+            dist/BoratoEq-v${{ env.BORATOEQ_VERSION }}-Windows-x64-CLAP.zip
+            dist/INSTALL-Windows-x64.md
+
+  build-macos:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runs_on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Each slice is validated on a NATIVE runner so auval loads the
+          # component without Rosetta. Apple Silicon first shipped on macOS 11,
+          # so 11.0 is the justified minimum for the arm64 slice.
+          - name: macOS arm64 Release
+            runs_on: macos-15
+            architecture: arm64
+            artifact_suffix: macOS-arm64
+            deployment_target: "11.0"
+          # Intel slice on a native Intel runner; 10.15 (Catalina) is a safe min.
+          - name: macOS Intel Release
+            runs_on: macos-15-intel
+            architecture: x86_64
+            artifact_suffix: macOS-intel
+            deployment_target: "10.15"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version from CMakeLists.txt
+        shell: bash
+        run: |
+          set -euo pipefail
+          ver=$(sed -nE 's/^[[:space:]]*project\(BoratoEq[[:space:]]+VERSION[[:space:]]+([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' CMakeLists.txt)
+          test -n "$ver"
+          echo "Resolved BORATO EQ version: $ver"
+          echo "BORATOEQ_VERSION=$ver" >> "$GITHUB_ENV"
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -G Xcode
+          -DBORATOEQ_FETCH_JUCE=ON
+          -DBORATOEQ_BUILD_CLAP=ON
+          -DBORATOEQ_COPY_PLUGIN_AFTER_BUILD=OFF
+          -DCMAKE_OSX_ARCHITECTURES=${{ matrix.architecture }}
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=${{ matrix.deployment_target }}
+          -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO
+          -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED=NO
+          -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY=""
+
+      - name: Build Release
+        run: cmake --build build --config Release
+
+      - name: Sign and validate Audio Unit
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          au="build/BoratoEq_artefacts/Release/AU/BORATO EQ.component"
+          test -d "$au"
+
+          # Ad-hoc sign the component in place. Because we sign the bundle that
+          # lives in the build tree, both the copy we install for auval AND the
+          # copy we zip below are the exact same signed/validated bundle.
+          codesign --force --deep --sign - "$au"
+          codesign --verify --deep --strict --verbose=2 "$au"
+
+          # Install into the per-user Components path so auval can discover it.
+          components="$HOME/Library/Audio/Plug-Ins/Components"
+          mkdir -p "$components"
+          rm -rf "$components/BORATO EQ.component"
+          cp -R "$au" "$components/"
+
+          installed="$components/BORATO EQ.component"
+
+          # Clear quarantine and the AU registration cache so a fresh scan runs.
+          xattr -dr com.apple.quarantine "$installed" || true
+          killall -9 AudioComponentRegistrar >/dev/null 2>&1 || true
+          rm -f "$HOME/Library/Caches/AudioUnitCache/com.apple.audiounits.cache" || true
+
+          # Make the validated slice (arm64 / x86_64) obvious in the log.
+          file "$installed/Contents/MacOS/"*
+
+          # Best-effort listing of our components; never fails the job.
+          auval -a | grep -i Borato || true
+
+          # Mandatory validation. Codes come from juce_add_plugin():
+          # IS_SYNTH -> aumu, PLUGIN_CODE = BqEq, MANUFACTURER_CODE = Bora.
+          # With `set -e`, a non-zero auval exit fails the whole workflow.
+          auval -v aumu BqEq Bora
+
+      - name: Package artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          artifact_root="build/BoratoEq_artefacts/Release"
+          dist="dist"
+          artifact_suffix="${{ matrix.artifact_suffix }}"
+          architecture="${{ matrix.architecture }}"
+          mkdir -p "$dist"
+
+          vst3="$artifact_root/VST3/BORATO EQ.vst3"
+          au="$artifact_root/AU/BORATO EQ.component"
+          clap="$artifact_root/CLAP/BORATO EQ.clap"
+
+          test -d "$vst3"
+          test -d "$au"
+          test -d "$clap"
+
+          base="BoratoEq-v${BORATOEQ_VERSION}-${artifact_suffix}"
+
+          # NOTE: the AU is zipped from the same on-disk bundle that was signed
+          # and validated in the previous step.
+          ditto -c -k --keepParent "$vst3" "$dist/${base}-VST3.zip"
+          ditto -c -k --keepParent "$au" "$dist/${base}-AU.zip"
+          ditto -c -k --keepParent "$clap" "$dist/${base}-CLAP.zip"
+
+          cat > "$dist/INSTALL-${artifact_suffix}.md" <<'EOF'
+          # BORATO EQ macOS install (@ARCH@)
+
+          The Audio Unit in this bundle is ad-hoc signed and was validated in CI
+          with `auval -v aumu BqEq Bora`. The VST3/CLAP artifacts are
+          unsigned development builds.
+
+          ## VST3
+
+          Unzip `BoratoEq-v@VER@-@SUFFIX@-VST3.zip` and copy `BORATO EQ.vst3` to:
+
+          ```text
+          ~/Library/Audio/Plug-Ins/VST3/
+          ```
+
+          ## AU
+
+          Unzip `BoratoEq-v@VER@-@SUFFIX@-AU.zip` and copy `BORATO EQ.component` to:
+
+          ```text
+          ~/Library/Audio/Plug-Ins/Components/
+          ```
+
+          You can re-validate locally with:
+
+          ```bash
+          auval -v aumu BqEq Bora
+          ```
+
+          ## CLAP
+
+          Unzip `BoratoEq-v@VER@-@SUFFIX@-CLAP.zip` and copy `BORATO EQ.clap` to:
+
+          ```text
+          ~/Library/Audio/Plug-Ins/CLAP/
+          ```
+
+          
+          ## Gatekeeper note
+
+          The unsigned artifacts may be blocked by macOS the first time. If needed, remove quarantine after unzipping:
+
+          ```bash
+          xattr -dr com.apple.quarantine "BORATO EQ.vst3"
+          xattr -dr com.apple.quarantine "BORATO EQ.component"
+          xattr -dr com.apple.quarantine "BORATO EQ.clap"
+                    ```
+          EOF
+
+          # Fill in placeholders (kept out of the quoted heredoc so the markdown
+          # code fences survive verbatim).
+          sed -i '' \
+            -e "s/@VER@/${BORATOEQ_VERSION}/g" \
+            -e "s/@SUFFIX@/${artifact_suffix}/g" \
+            -e "s/@ARCH@/${architecture}/g" \
+            "$dist/INSTALL-${artifact_suffix}.md"
+
+          ls -la "$dist"
+
+      - name: Upload VST3
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoratoEq-v${{ env.BORATOEQ_VERSION }}-${{ matrix.artifact_suffix }}-VST3
+          path: dist/BoratoEq-v${{ env.BORATOEQ_VERSION }}-${{ matrix.artifact_suffix }}-VST3.zip
+          if-no-files-found: error
+
+      - name: Upload AU
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoratoEq-v${{ env.BORATOEQ_VERSION }}-${{ matrix.artifact_suffix }}-AU
+          path: dist/BoratoEq-v${{ env.BORATOEQ_VERSION }}-${{ matrix.artifact_suffix }}-AU.zip
+          if-no-files-found: error
+
+      - name: Upload CLAP
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoratoEq-v${{ env.BORATOEQ_VERSION }}-${{ matrix.artifact_suffix }}-CLAP
+          path: dist/BoratoEq-v${{ env.BORATOEQ_VERSION }}-${{ matrix.artifact_suffix }}-CLAP.zip
+          if-no-files-found: error
+
+      - name: Upload install notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoratoEq-v${{ env.BORATOEQ_VERSION }}-${{ matrix.artifact_suffix }}-install-notes
+          path: dist/INSTALL-${{ matrix.artifact_suffix }}.md
+          if-no-files-found: error
+
+      - name: Upload release bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoratoEq-v${{ env.BORATOEQ_VERSION }}-${{ matrix.artifact_suffix }}-release-assets
+          path: dist/*
+          if-no-files-found: error
+
+      - name: Attach assets to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            dist/BoratoEq-v${{ env.BORATOEQ_VERSION }}-${{ matrix.artifact_suffix }}-VST3.zip
+            dist/BoratoEq-v${{ env.BORATOEQ_VERSION }}-${{ matrix.artifact_suffix }}-AU.zip
+            dist/BoratoEq-v${{ env.BORATOEQ_VERSION }}-${{ matrix.artifact_suffix }}-CLAP.zip
+            dist/INSTALL-${{ matrix.artifact_suffix }}.md
+
+  build-ubuntu:
+    name: Ubuntu Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version from CMakeLists.txt
+        shell: bash
+        run: |
+          set -euo pipefail
+          ver=$(sed -nE 's/^[[:space:]]*project\(BoratoEq[[:space:]]+VERSION[[:space:]]+([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' CMakeLists.txt)
+          test -n "$ver"
+          echo "Resolved BORATO EQ version: $ver"
+          echo "BORATOEQ_VERSION=$ver" >> "$GITHUB_ENV"
+
+      - name: Install JUCE Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            pkg-config \
+            libasound2-dev \
+            libjack-jackd2-dev \
+            libfreetype6-dev \
+            libfontconfig1-dev \
+            libx11-dev \
+            libxcomposite-dev \
+            libxcursor-dev \
+            libxext-dev \
+            libxinerama-dev \
+            libxrandr-dev \
+            libxrender-dev \
+            xvfb
+
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DBORATOEQ_FETCH_JUCE=ON
+          -DBORATOEQ_BUILD_CLAP=ON
+          -DBORATOEQ_BUILD_TESTS=ON
+          -DBORATOEQ_COPY_PLUGIN_AFTER_BUILD=OFF
+
+      - name: Build Release
+        run: cmake --build build
+
+      - name: Run offline DSP tests
+        run: >
+          xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x1024x24"
+          ctest --test-dir build --output-on-failure
+
+      - name: Package artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          artifact_root="build/BoratoEq_artefacts/Release"
+          dist="dist"
+          mkdir -p "$dist"
+
+          vst3="$artifact_root/VST3/BORATO EQ.vst3"
+          clap="$artifact_root/CLAP/BORATO EQ.clap"
+
+          test -d "$vst3"
+          test -f "$clap"
+
+          base="BoratoEq-v${BORATOEQ_VERSION}-Ubuntu"
+
+          tar -czf "$dist/${base}-VST3.tar.gz" -C "$artifact_root/VST3" "BORATO EQ.vst3"
+          tar -czf "$dist/${base}-CLAP.tar.gz" -C "$artifact_root/CLAP" "BORATO EQ.clap"
+
+          cat > "$dist/INSTALL-Ubuntu.md" <<'EOF'
+          # BORATO EQ Ubuntu install
+
+          These artifacts are unsigned development builds.
+
+          ## VST3
+
+          Extract `BoratoEq-v@VER@-Ubuntu-VST3.tar.gz` and copy `BORATO EQ.vst3` to:
+
+          ```text
+          ~/.vst3/
+          ```
+
+          ## CLAP
+
+          Extract `BoratoEq-v@VER@-Ubuntu-CLAP.tar.gz` and copy `BORATO EQ.clap` to:
+
+          ```text
+          ~/.clap/
+          ```
+
+          Then rescan plugins in your DAW.
+
+          
+          ```bash
+          chmod +x "BORATO EQ"
+          ./"BORATO EQ"
+          ```
+          EOF
+
+          sed -i -e "s/@VER@/${BORATOEQ_VERSION}/g" "$dist/INSTALL-Ubuntu.md"
+
+          ls -la "$dist"
+
+      - name: Upload VST3
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoratoEq-v${{ env.BORATOEQ_VERSION }}-Ubuntu-VST3
+          path: dist/BoratoEq-v${{ env.BORATOEQ_VERSION }}-Ubuntu-VST3.tar.gz
+          if-no-files-found: error
+
+      - name: Upload CLAP
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoratoEq-v${{ env.BORATOEQ_VERSION }}-Ubuntu-CLAP
+          path: dist/BoratoEq-v${{ env.BORATOEQ_VERSION }}-Ubuntu-CLAP.tar.gz
+          if-no-files-found: error
+
+      - name: Upload install notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoratoEq-v${{ env.BORATOEQ_VERSION }}-Ubuntu-install-notes
+          path: dist/INSTALL-Ubuntu.md
+          if-no-files-found: error
+
+      - name: Upload release bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoratoEq-v${{ env.BORATOEQ_VERSION }}-Ubuntu-release-assets
+          path: dist/*
+          if-no-files-found: error
+
+      - name: Attach assets to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            dist/BoratoEq-v${{ env.BORATOEQ_VERSION }}-Ubuntu-VST3.tar.gz
+            dist/BoratoEq-v${{ env.BORATOEQ_VERSION }}-Ubuntu-CLAP.tar.gz
+            dist/INSTALL-Ubuntu.md
