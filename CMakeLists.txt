@@ -109,6 +109,10 @@ juce_add_binary_data(BoratoEqAssets
 
 target_sources(BoratoEq
     PRIVATE
+        Source/PresetManager.cpp
+        Source/PresetManager.h
+        Source/Settings.cpp
+        Source/Settings.h
         Source/PluginProcessor.cpp
         Source/PluginProcessor.h
         Source/PluginParameters.cpp

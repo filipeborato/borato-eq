@@ -28,7 +28,7 @@ private:
     BoratoEqAudioProcessor& processor;
     BoratoEqLookAndFeel lookAndFeel;
 
-    HeaderBarComponent header { lookAndFeel };
+    HeaderBarComponent header { processor, lookAndFeel };
     FilterPanelComponent filterPanel;
     std::array<std::unique_ptr<EqBandComponent>, BoratoEq::numBands> bands;
     RightPanelComponent rightPanel;
