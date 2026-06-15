@@ -33,7 +33,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
 
       - name: Resolve version from CMakeLists.txt
         shell: bash
@@ -161,7 +161,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
 
       - name: Resolve version from CMakeLists.txt
         shell: bash
@@ -369,7 +369,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
 
       - name: Resolve version from CMakeLists.txt
         shell: bash
