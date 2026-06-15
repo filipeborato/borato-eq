@@ -6,7 +6,7 @@
               bundleIdentifier="com.boratocompany.boratoeq" pluginName="BORATO EQ"
               pluginDesc="Five-band parallel tube EQ for mixing and mastering."
               pluginManufacturer="Borato Company" pluginManufacturerCode="Bora"
-              pluginCode="BqEq" pluginChannelConfigs="{2,2}" pluginFormats="buildAU,buildStandalone,buildVST3">
+              pluginCode="BqEq" pluginChannelConfigs="{2,2}" pluginFormats="buildAU,buildVST3">
   <MAINGROUP id="root" name="BoratoEq">
     <GROUP id="src" name="Source">
       <FILE id="procCpp" name="PluginProcessor.cpp" compile="1" resource="0"
@@ -20,6 +20,14 @@
             file="Source/PluginParameters.cpp"/>
       <FILE id="paramsH" name="PluginParameters.h" compile="0" resource="0"
             file="Source/PluginParameters.h"/>
+      <FILE id="presetCpp" name="PresetManager.cpp" compile="1" resource="0"
+            file="Source/PresetManager.cpp"/>
+      <FILE id="presetH" name="PresetManager.h" compile="0" resource="0"
+            file="Source/PresetManager.h"/>
+      <FILE id="settingsCpp" name="Settings.cpp" compile="1" resource="0"
+            file="Source/Settings.cpp"/>
+      <FILE id="settingsH" name="Settings.h" compile="0" resource="0"
+            file="Source/Settings.h"/>
       <GROUP id="dsp" name="dsp">
         <FILE id="peqCpp" name="ParallelEq.cpp" compile="1" resource="0"
               file="Source/dsp/ParallelEq.cpp"/>
