@@ -4,7 +4,6 @@
 ![BORATO EQ](assets/ui_screenshot.png)
 
 **Manufacturer:** Borato Company  
-**Series/Identity:** IRON GLASS_  
 
 **BORATO EQ** is a five-band parametric parallel tube EQ for mixing and mastering. 
 
